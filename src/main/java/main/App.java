@@ -1,12 +1,10 @@
 package main;
 
-import com.google.api.services.youtube.YouTube;
-
 import org.json.JSONObject;
 
 import helper.File;
+import restservices.RestDataStoreFactory;
 import restservices.RestCache;
-import youtube.MyDataStoreFactory;
 import youtube.YouTubeApiFactory;
 import youtube.YouTubeApiWrapper;
 
@@ -23,14 +21,15 @@ public class App {
             JSONObject jdownloaderConfiguration = configuration.getJSONObject("jdownloader");
             String jdownloaderFolderWatch = jdownloaderConfiguration.getString("folderwatch");
 
-            RestCache cache = new RestCache(cacheConfiguration.getInt("port"),
+            RestCache cache = new RestCache(
+                    cacheConfiguration.getInt("port"),
                     cacheConfiguration.getString("authorization"));
-            MyDataStoreFactory.Initialize(cache);
 
-            YouTube youTubeApi = new YouTubeApiFactory().getService();
-            YouTubeApiWrapper youTubeApiWrapper = new YouTubeApiWrapper(youTubeApi);
+            RestDataStoreFactory dataStoreFactory = new RestDataStoreFactory(cache);
 
-            Controller controller = new Controller(youTubeApiWrapper, cache, jdownloaderFolderWatch);
+            YouTubeApiWrapper youTubeApi = new YouTubeApiFactory(dataStoreFactory.GetCredentialDataStore()).getApi();
+
+            Controller controller = new Controller(youTubeApi, cache, jdownloaderFolderWatch);
             controller.NotifyUnwatchedVideosFromSubscriptionFeed();
         } catch (Exception exception) {
             exception.printStackTrace();

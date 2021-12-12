@@ -1,6 +1,7 @@
 package youtube;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
@@ -9,6 +10,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.DataStore;
 import com.google.api.services.youtube.YouTube;
 
 import java.io.IOException;
@@ -25,20 +27,26 @@ public class YouTubeApiFactory {
     private static final String APPLICATION_NAME = "YouTube to JDownloader";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
+    protected final DataStore<StoredCredential> CredentialDataStore;
+
+    public YouTubeApiFactory(DataStore<StoredCredential> credentialDataStore) {
+        this.CredentialDataStore = credentialDataStore;
+    }
+
     /**
      * Create an authorized Credential object.
      *
      * @return an authorized Credential object.
      * @throws IOException
      */
-    public Credential authorize(final NetHttpTransport httpTransport) throws IOException {
+    private Credential authorize(final NetHttpTransport httpTransport) throws IOException {
         // Load client secrets.
         InputStream in = YouTubeApiFactory.class.getResourceAsStream(CLIENT_SECRETS);
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
         // Build flow and trigger user authorization request.
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 httpTransport, JSON_FACTORY, clientSecrets, SCOPES)
-                        .setCredentialDataStore(MyDataStoreFactory.GetCredentialDataStore())
+                        .setCredentialDataStore(this.CredentialDataStore)
                         .setAccessType("offline")
                         .build();
         Credential credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
@@ -51,10 +59,15 @@ public class YouTubeApiFactory {
      * @return an authorized API client service
      * @throws GeneralSecurityException, IOException
      */
-    public YouTube getService() throws GeneralSecurityException, IOException {
+    private YouTube getService() throws GeneralSecurityException, IOException {
         final NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         Credential credential = this.authorize(httpTransport);
-        return new YouTube.Builder(httpTransport, JSON_FACTORY, credential).setApplicationName(APPLICATION_NAME)
+        return new YouTube.Builder(httpTransport, JSON_FACTORY, credential)
+                .setApplicationName(APPLICATION_NAME)
                 .build();
+    }
+
+    public YouTubeApiWrapper getApi() throws GeneralSecurityException, IOException {
+        return new YouTubeApiWrapper(this.getService());
     }
 }
