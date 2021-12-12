@@ -36,8 +36,11 @@ public class YouTubeApiFactory {
         InputStream in = YouTubeApiFactory.class.getResourceAsStream(CLIENT_SECRETS);
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
         // Build flow and trigger user authorization request.
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, JSON_FACTORY,
-                clientSecrets, SCOPES).setCredentialDataStore(MyDataStoreFactory.GetCredentialDataStore()).build();
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                httpTransport, JSON_FACTORY, clientSecrets, SCOPES)
+                        .setCredentialDataStore(MyDataStoreFactory.GetCredentialDataStore())
+                        .setAccessType("offline")
+                        .build();
         Credential credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
         return credential;
     }
