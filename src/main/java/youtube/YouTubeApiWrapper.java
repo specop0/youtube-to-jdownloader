@@ -76,11 +76,17 @@ public class YouTubeApiWrapper implements IYouTubeApi {
         List<Video> videos = new ArrayList<>();
 
         for (List<String> videoIdsBatch : Linq.Chunk(playlistItemIds, 50)) {
-            YouTube.Videos.List request = this.api.videos().list(Arrays.asList("snippet")).setMaxResults(50l)
+            YouTube.Videos.List request = this.api.videos()
+                    .list(Arrays.asList("snippet", "liveStreamingDetails"))
+                    .setMaxResults(50l)
                     .setId(videoIdsBatch);
 
             VideoListResponse response = request.execute();
-            response.getItems().stream().map(item -> new Video(item)).forEach(item -> videos.add(item));
+            response.getItems()
+                    .stream()
+                    .filter(item -> item.getLiveStreamingDetails() == null || item.getLiveStreamingDetails().getActualEndTime() != null)
+                    .map(item -> new Video(item))
+                    .forEach(item -> videos.add(item));
         }
 
         return videos;
