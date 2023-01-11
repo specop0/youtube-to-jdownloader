@@ -6,11 +6,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.ChannelListResponse;
 import com.google.api.services.youtube.model.PlaylistItemListResponse;
 import com.google.api.services.youtube.model.SubscriptionListResponse;
 import com.google.api.services.youtube.model.VideoListResponse;
+import com.google.api.services.youtube.model.VideoLiveStreamingDetails;
 
 import helper.Linq;
 import models.Video;
@@ -84,7 +86,23 @@ public class YouTubeApiWrapper implements IYouTubeApi {
             VideoListResponse response = request.execute();
             response.getItems()
                     .stream()
-                    .filter(item -> item.getLiveStreamingDetails() == null || item.getLiveStreamingDetails().getActualEndTime() != null)
+                    .filter(item -> {
+                        VideoLiveStreamingDetails liveStreamingDetails = item.getLiveStreamingDetails();
+                        if (liveStreamingDetails == null) {
+                            return true;
+                        }
+
+                        DateTime start = liveStreamingDetails.getActualStartTime();
+                        DateTime end = liveStreamingDetails.getActualEndTime();
+                        if (start == null || end == null) {
+                            return false;
+                        }
+
+                        long durationInMs = end.getValue() - start.getValue();
+                        long twoHoursInMs = 2 * 60 * 60 * 1000;
+
+                        return durationInMs < twoHoursInMs;
+                    })
                     .filter(item -> !"unlisted".equals(item.getStatus().getPrivacyStatus()))
                     .map(item -> new Video(item))
                     .forEach(item -> videos.add(item));
