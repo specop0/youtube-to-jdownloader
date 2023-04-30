@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.ChannelListResponse;
@@ -69,9 +70,18 @@ public class YouTubeApiWrapper implements IYouTubeApi {
         YouTube.PlaylistItems.List request = this.api.playlistItems().list(Arrays.asList("contentDetails"))
                 .setMaxResults(maxResults).setPlaylistId(playlistId);
 
-        PlaylistItemListResponse response = request.execute();
-        return response.getItems().stream().filter(item -> "youtube#playlistItem".equals(item.getKind()))
-                .map(item -> item.getContentDetails().getVideoId()).collect(Collectors.toList());
+        try {
+            PlaylistItemListResponse response = request.execute();
+            return response.getItems().stream().filter(item -> "youtube#playlistItem".equals(item.getKind()))
+                    .map(item -> item.getContentDetails().getVideoId()).collect(Collectors.toList());
+        } catch (GoogleJsonResponseException exception) {
+            // ignore channels without a playlist (e.g., new ones)
+            if (exception.getStatusCode() == 404) {
+                return new ArrayList<String>();
+            }
+
+            throw exception;
+        }
     }
 
     public List<Video> GetVideos(List<String> playlistItemIds) throws IOException {
